@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <map>
 
 // Constants
@@ -56,6 +55,8 @@ private:
     void updateLeaderboard(const std::string& name, bool won, bool draw = false);
     void saveLeaderboard() const;
     void loadLeaderboard();
+    std::string getPlayerName(const std::string& prompt);
+    int getValidatedInput(const std::string& prompt, int min, int max);
     
 public:
     Game();

@@ -1,7 +1,5 @@
 #include <iostream>
 #include <string>
-#include <vector>
-#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 #include "game.h"
@@ -17,8 +15,14 @@ int main() {
     
     while (!exitGame) {
         game.showMainMenu();
-        cout << "Enter your choice: ";
-        cin >> choice;
+        cout << "Enter your choice (1-5): ";
+        
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "Invalid input. Please enter a number between 1 and 5.\n";
+            continue;
+        }
         
         switch (choice) {
             case 1:
@@ -38,9 +42,7 @@ int main() {
                 cout << "Thanks for playing!\n";
                 break;
             default:
-                cout << "Invalid choice. Please try again.\n";
-                cin.clear();
-                cin.ignore(10000, '\n');
+                cout << "Invalid choice. Please enter a number between 1 and 5.\n";
         }
     }
     

@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <limits>
 #include <algorithm>
+#include <cctype>
 #include "game.h"
 
 using namespace std;
@@ -29,24 +30,38 @@ void Game::clearScreen() const {
 }
 
 void Game::displayBoard() const {
-    cout << "\n    0   1   2\n";
-    cout << "  +---+---+---+\n";
+    cout << "\n    1   2   3\n";
+    cout << "  +-----------+\n";
     for (int i = 0; i < BOARD_SIZE; i++) {
-        cout << i << " | ";
+        cout << i+1 << " ¦ ";
         for (int j = 0; j < BOARD_SIZE; j++) {
-            cout << board[i][j] << " | ";
+            // Add color to X and O
+            if (board[i][j] == PLAYER_X) {
+                cout << "\033[1;34m" << board[i][j] << "\033[0m"; // Blue for X
+            } else if (board[i][j] == PLAYER_O) {
+                cout << "\033[1;31m" << board[i][j] << "\033[0m"; // Red for O
+            } else {
+                cout << board[i][j];
+            }
+            cout << " ¦ ";
         }
-        cout << "\n  +---+---+---+\n";
+        cout << "\n";
+        if (i < BOARD_SIZE - 1) {
+            cout << "  ¦---+---+---¦\n";
+        }
     }
-    cout << endl;
+    cout << "  +-----------+\n\n";
 }
 
 void Game::displayStatus() const {
-    cout << "Current player: " << currentPlayer;
-    if (vsAI && currentPlayer == PLAYER_O) {
-        cout << " (AI)";
+    string currentPlayerName;
+    if (currentPlayer == PLAYER_X) {
+        currentPlayerName = player1Name;
+    } else {
+        currentPlayerName = vsAI ? "AI" : player2Name;
     }
-    cout << endl;
+    
+    cout << "Current player: " << currentPlayerName << " (" << currentPlayer << ")\n";
 }
 
 bool Game::isValidMove(int row, int col) const {
@@ -90,10 +105,72 @@ void Game::switchPlayer() {
     currentPlayer = (currentPlayer == PLAYER_X) ? PLAYER_O : PLAYER_X;
 }
 
+string Game::getPlayerName(const string& prompt) {
+    string name;
+    while (true) {
+        cout << prompt;
+        getline(cin, name);
+        
+        // Remove leading/trailing whitespace
+        size_t start = name.find_first_not_of(" \t\n\r");
+        if (start == string::npos) {
+            cout << "Name cannot be empty. Please enter a valid name: ";
+            continue;
+        }
+        
+        size_t end = name.find_last_not_of(" \t\n\r");
+        name = name.substr(start, end - start + 1);
+        
+        // Check if name is valid (alphanumeric and spaces only)
+        bool valid = true;
+        for (char c : name) {
+            if (!isalnum(c) && c != ' ') {
+                valid = false;
+                break;
+            }
+        }
+        
+        if (!valid) {
+            cout << "Name can only contain letters, numbers, and spaces. Please try again: ";
+            continue;
+        }
+        
+        if (name.length() < 1 || name.length() > 15) {
+            cout << "Name must be between 1 and 15 characters. Please try again: ";
+            continue;
+        }
+        
+        break;
+    }
+    return name;
+}
+
+int Game::getValidatedInput(const string& prompt, int min, int max) {
+    int value;
+    while (true) {
+        cout << prompt;
+        if (!(cin >> value)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid input. Please enter a number between " << min << " and " << max << ".\n";
+            continue;
+        }
+        
+        if (value < min || value > max) {
+            cout << "Please enter a number between " << min << " and " << max << ".\n";
+            continue;
+        }
+        
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        break;
+    }
+    return value;
+}
+
 void Game::showMainMenu() const {
     clearScreen();
     cout << "========================================\n";
-    cout << "           TIC-TAC-TOE                  \n";
+    cout << "           TIC-TAC-TOE ENHANCED         \n";
     cout << "========================================\n";
     cout << "1. Player vs Player\n";
     cout << "2. Player vs AI\n";
@@ -108,41 +185,33 @@ void Game::startNewGame(bool againstAI) {
     initializeBoard();
     currentPlayer = PLAYER_X;
     
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear input buffer
+    
     // Get player names
-    if (leaderboard.empty()) {
-        cout << "Enter Player 1 (X) name: ";
-        cin >> player1Name;
+    if (player1Name.empty()) {
+        player1Name = getPlayerName("Enter Player 1 (X) name: ");
         leaderboard[player1Name] = {player1Name, 0, 0, 0};
+    }
+    
+    if (againstAI) {
+        player2Name = "AI";
+        // Select AI difficulty
+        int diffChoice = getValidatedInput("Select AI difficulty (1-Easy, 2-Medium, 3-Hard): ", 1, 3);
         
-        if (againstAI) {
-            player2Name = "AI";
-            // Select AI difficulty
-            int diffChoice;
-            cout << "Select AI difficulty (1-Easy, 2-Medium, 3-Hard): ";
-            cin >> diffChoice;
-            
-            if (diffChoice == 1) aiDifficulty = Difficulty::EASY;
-            else if (diffChoice == 3) aiDifficulty = Difficulty::HARD;
-            else aiDifficulty = Difficulty::MEDIUM;
-        } else {
-            cout << "Enter Player 2 (O) name: ";
-            cin >> player2Name;
-            leaderboard[player2Name] = {player2Name, 0, 0, 0};
-        }
+        if (diffChoice == 1) aiDifficulty = Difficulty::EASY;
+        else if (diffChoice == 3) aiDifficulty = Difficulty::HARD;
+        else aiDifficulty = Difficulty::MEDIUM;
     } else {
-        if (!againstAI) {
-            cout << "Player 1 (X): " << player1Name << endl;
-            cout << "Enter Player 2 (O) name: ";
-            cin >> player2Name;
-            if (leaderboard.find(player2Name) == leaderboard.end()) {
-                leaderboard[player2Name] = {player2Name, 0, 0, 0};
-            }
+        if (player2Name.empty() || player2Name == "AI") {
+            player2Name = getPlayerName("Enter Player 2 (O) name: ");
+        }
+        if (leaderboard.find(player2Name) == leaderboard.end()) {
+            leaderboard[player2Name] = {player2Name, 0, 0, 0};
         }
     }
     
     // Game loop
     bool gameOver = false;
-    int row, col;
     
     while (!gameOver) {
         clearScreen();
@@ -152,21 +221,28 @@ void Game::startNewGame(bool againstAI) {
         if (vsAI && currentPlayer == PLAYER_O) {
             // AI's turn
             cout << "AI is thinking...\n";
+            #ifdef _WIN32
+                system("timeout 1 >nul");
+            #else
+                system("sleep 1");
+            #endif
             makeAIMove();
         } else {
             // Player's turn
-            cout << "Enter row and column (0-2) separated by space: ";
-            cin >> row >> col;
+            int row = getValidatedInput("Enter row (1-3): ", 1, 3);
+            int col = getValidatedInput("Enter column (1-3): ", 1, 3);
             
-            if (cin.fail()) {
-                cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cout << "Invalid input. Please enter numbers only.\n";
-                continue;
-            }
+            // Convert to 0-based index
+            row--;
+            col--;
             
             if (!isValidMove(row, col)) {
-                cout << "Invalid move. Please try again.\n";
+                cout << "That position is already taken. Please try again.\n";
+                #ifdef _WIN32
+                    system("timeout 2 >nul");
+                #else
+                    system("sleep 2");
+                #endif
                 continue;
             }
             
@@ -178,7 +254,7 @@ void Game::startNewGame(bool againstAI) {
             clearScreen();
             displayBoard();
             string winnerName = (currentPlayer == PLAYER_X) ? player1Name : player2Name;
-            cout << "Player " << winnerName << " wins!\n";
+            cout << "?? Player " << winnerName << " wins! ??\n";
             
             // Update leaderboard
             if (currentPlayer == PLAYER_X) {
@@ -215,8 +291,9 @@ void Game::startNewGame(bool againstAI) {
     
     // Ask to play again
     char playAgain;
-    cout << "Would you like to play again? (y/n): ";
+    cout << "\nWould you like to play again? (y/n): ";
     cin >> playAgain;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     
     if (tolower(playAgain) == 'y') {
         startNewGame(vsAI);
@@ -256,7 +333,7 @@ void Game::makeAIMove() {
     }
     
     makeMove(move.first, move.second);
-    cout << "AI chose position: " << move.first << " " << move.second << endl;
+    cout << "AI chose position: " << move.first+1 << " " << move.second+1 << endl;
 }
 
 pair<int, int> Game::findBestMove() {
@@ -343,9 +420,12 @@ pair<int, int> Game::findWinningMove(char player) const {
         for (int j = 0; j < BOARD_SIZE; j++) {
             if (board[i][j] == EMPTY) {
                 // Test if this move would win
-                Game testGame = *this;
-                testGame.board[i][j] = player;
-                if (testGame.checkWin(player)) {
+                char temp = board[i][j];
+                const_cast<Game*>(this)->board[i][j] = player;
+                bool wouldWin = checkWin(player);
+                const_cast<Game*>(this)->board[i][j] = temp;
+                
+                if (wouldWin) {
                     return {i, j};
                 }
             }
@@ -419,10 +499,11 @@ void Game::showHelp() const {
     cout << "========================================\n";
     cout << "             GAME CONTROLS              \n";
     cout << "========================================\n";
-    cout << "Enter row and column numbers (0-2)\n";
-    cout << "separated by a space when prompted.\n";
-    cout << "For example: '1 2' places your mark\n";
-    cout << "in the center of the right column.\n";
+    cout << "Enter row and column numbers (1-3)\n";
+    cout << "when prompted. For example:\n";
+    cout << "Row: 1, Column: 1 - Top-left corner\n";
+    cout << "Row: 2, Column: 2 - Center position\n";
+    cout << "Row: 3, Column: 3 - Bottom-right corner\n";
     cout << "========================================\n";
     cout << "Press Enter to continue...";
     cin.ignore();
