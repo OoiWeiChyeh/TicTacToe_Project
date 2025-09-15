@@ -57,6 +57,7 @@ private:
     void loadLeaderboard();
     std::string getPlayerName(const std::string& prompt);
     int getValidatedInput(const std::string& prompt, int min, int max);
+    void waitForEnter() const;
     
 public:
     Game();

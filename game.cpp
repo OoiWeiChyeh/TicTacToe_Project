@@ -4,15 +4,18 @@
 #include <limits>
 #include <algorithm>
 #include <cctype>
+#include <locale>
 #include "game.h"
 
 using namespace std;
 
+// Constructor: Initialize game state
 Game::Game() : currentPlayer(PLAYER_X), vsAI(false), aiDifficulty(Difficulty::MEDIUM) {
     initializeBoard();
     loadLeaderboard();
 }
 
+// Initialize the game board with empty spaces
 void Game::initializeBoard() {
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
@@ -21,6 +24,7 @@ void Game::initializeBoard() {
     }
 }
 
+// Clear the console screen
 void Game::clearScreen() const {
     #ifdef _WIN32
         system("cls");
@@ -29,6 +33,7 @@ void Game::clearScreen() const {
     #endif
 }
 
+// Display the game board with visual enhancements
 void Game::displayBoard() const {
     cout << "\n    1   2   3\n";
     cout << "  +-----------+\n";
@@ -53,6 +58,7 @@ void Game::displayBoard() const {
     cout << "  +-----------+\n\n";
 }
 
+// Display current game status
 void Game::displayStatus() const {
     string currentPlayerName;
     if (currentPlayer == PLAYER_X) {
@@ -64,14 +70,17 @@ void Game::displayStatus() const {
     cout << "Current player: " << currentPlayerName << " (" << currentPlayer << ")\n";
 }
 
+// Check if a move is valid
 bool Game::isValidMove(int row, int col) const {
     return (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && board[row][col] == EMPTY);
 }
 
+// Make a move on the board
 void Game::makeMove(int row, int col) {
     board[row][col] = currentPlayer;
 }
 
+// Check if a player has won
 bool Game::checkWin(char player) const {
     // Check rows and columns
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -90,6 +99,7 @@ bool Game::checkWin(char player) const {
     return false;
 }
 
+// Check if the game is a draw
 bool Game::checkDraw() const {
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
@@ -101,10 +111,12 @@ bool Game::checkDraw() const {
     return true;
 }
 
+// Switch to the other player
 void Game::switchPlayer() {
     currentPlayer = (currentPlayer == PLAYER_X) ? PLAYER_O : PLAYER_X;
 }
 
+// Get a validated player name with support for Indian names
 string Game::getPlayerName(const string& prompt) {
     string name;
     while (true) {
@@ -121,22 +133,33 @@ string Game::getPlayerName(const string& prompt) {
         size_t end = name.find_last_not_of(" \t\n\r");
         name = name.substr(start, end - start + 1);
         
-        // Check if name is valid (alphanumeric and spaces only)
+        // Check if name is valid (allows letters, spaces, and common Indian name characters)
         bool valid = true;
+        bool hasLetter = false;
+        
         for (char c : name) {
-            if (!isalnum(c) && c != ' ') {
+            // Allow letters, spaces, apostrophes, hyphens, periods, and slashes (for Indian names)
+            if (!isalpha(c) && c != ' ' && c != '\'' && c != '-' && c != '.' && c != '/') {
                 valid = false;
                 break;
+            }
+            if (isalpha(c)) {
+                hasLetter = true;
             }
         }
         
         if (!valid) {
-            cout << "Name can only contain letters, numbers, and spaces. Please try again: ";
+            cout << "Name can only contain letters, spaces, apostrophes, hyphens, periods, and slashes. Please try again:\n";
             continue;
         }
         
-        if (name.length() < 1 || name.length() > 15) {
-            cout << "Name must be between 1 and 15 characters. Please try again: ";
+        if (!hasLetter) {
+            cout << "Name must contain at least one letter. Please try again:\n ";
+            continue;
+        }
+        
+        if (name.length() < 1 || name.length() > 20) {
+            cout << "Name must be between 1 and 20 characters. Please try again:\n ";
             continue;
         }
         
@@ -145,6 +168,7 @@ string Game::getPlayerName(const string& prompt) {
     return name;
 }
 
+// Get validated integer input within a range
 int Game::getValidatedInput(const string& prompt, int min, int max) {
     int value;
     while (true) {
@@ -156,21 +180,30 @@ int Game::getValidatedInput(const string& prompt, int min, int max) {
             continue;
         }
         
+        // Clear the input buffer
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        
         if (value < min || value > max) {
             cout << "Please enter a number between " << min << " and " << max << ".\n";
             continue;
         }
         
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
         break;
     }
     return value;
 }
 
+// Wait for user to press Enter
+void Game::waitForEnter() const {
+    cout << "Press Enter to continue...";
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+
+// Display the main menu
 void Game::showMainMenu() const {
     clearScreen();
     cout << "========================================\n";
-    cout << "           TIC-TAC-TOE ENHANCED         \n";
+    cout << "           TIC-TAC-TOE                  \n";
     cout << "========================================\n";
     cout << "1. Player vs Player\n";
     cout << "2. Player vs AI\n";
@@ -180,17 +213,18 @@ void Game::showMainMenu() const {
     cout << "========================================\n";
 }
 
+// Start a new game
 void Game::startNewGame(bool againstAI) {
     vsAI = againstAI;
     initializeBoard();
     currentPlayer = PLAYER_X;
     
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear input buffer
-    
     // Get player names
     if (player1Name.empty()) {
         player1Name = getPlayerName("Enter Player 1 (X) name: ");
-        leaderboard[player1Name] = {player1Name, 0, 0, 0};
+        if (leaderboard.find(player1Name) == leaderboard.end()) {
+            leaderboard[player1Name] = {player1Name, 0, 0, 0};
+        }
     }
     
     if (againstAI) {
@@ -238,11 +272,7 @@ void Game::startNewGame(bool againstAI) {
             
             if (!isValidMove(row, col)) {
                 cout << "That position is already taken. Please try again.\n";
-                #ifdef _WIN32
-                    system("timeout 2 >nul");
-                #else
-                    system("sleep 2");
-                #endif
+                waitForEnter();
                 continue;
             }
             
@@ -302,6 +332,7 @@ void Game::startNewGame(bool againstAI) {
     }
 }
 
+// AI makes a move based on difficulty
 void Game::makeAIMove() {
     pair<int, int> move;
     
@@ -336,6 +367,7 @@ void Game::makeAIMove() {
     cout << "AI chose position: " << move.first+1 << " " << move.second+1 << endl;
 }
 
+// Find the best move using minimax algorithm
 pair<int, int> Game::findBestMove() {
     int bestScore = -1000;
     pair<int, int> bestMove = {-1, -1};
@@ -358,6 +390,7 @@ pair<int, int> Game::findBestMove() {
     return bestMove;
 }
 
+// Minimax algorithm for AI decision making
 int Game::minimax(int depth, bool isMaximizing) {
     if (checkWin(PLAYER_O)) return 10 - depth;
     if (checkWin(PLAYER_X)) return depth - 10;
@@ -396,6 +429,7 @@ int Game::minimax(int depth, bool isMaximizing) {
     }
 }
 
+// Find a random valid move
 pair<int, int> Game::findRandomMove() const {
     vector<pair<int, int>> availableMoves;
     
@@ -415,6 +449,7 @@ pair<int, int> Game::findRandomMove() const {
     return availableMoves[randomIndex];
 }
 
+// Find a winning move for the specified player
 pair<int, int> Game::findWinningMove(char player) const {
     for (int i = 0; i < BOARD_SIZE; i++) {
         for (int j = 0; j < BOARD_SIZE; j++) {
@@ -435,6 +470,7 @@ pair<int, int> Game::findWinningMove(char player) const {
     return {-1, -1};
 }
 
+// Update the leaderboard with game results
 void Game::updateLeaderboard(const string& name, bool won, bool draw) {
     if (leaderboard.find(name) != leaderboard.end()) {
         if (draw) {
@@ -447,28 +483,29 @@ void Game::updateLeaderboard(const string& name, bool won, bool draw) {
     }
 }
 
+// Display the leaderboard
 void Game::showLeaderboard() const {
     clearScreen();
-    cout << "========================================\n";
-    cout << "               LEADERBOARD              \n";
-    cout << "========================================\n";
+    cout << "=============================================\n";
+    cout << "                  LEADERBOARD                \n";
+    cout << "=============================================\n";
     
     if (leaderboard.empty()) {
         cout << "No games played yet.\n";
     } else {
-        cout << left << setw(15) << "Player" 
+        cout << left << setw(20) << "Player" 
              << setw(8) << "Wins" 
              << setw(8) << "Losses" 
              << setw(8) << "Draws" 
              << setw(10) << "Win Rate" << endl;
-        cout << "----------------------------------------\n";
+        cout << "---------------------------------------------\n";
         
         for (const auto& entry : leaderboard) {
             const Player& player = entry.second;
             int totalGames = player.wins + player.losses + player.draws;
             float winRate = (totalGames > 0) ? (player.wins * 100.0f / totalGames) : 0;
             
-            cout << left << setw(15) << player.name 
+            cout << left << setw(20) << player.name 
                  << setw(8) << player.wins 
                  << setw(8) << player.losses 
                  << setw(8) << player.draws 
@@ -476,12 +513,11 @@ void Game::showLeaderboard() const {
         }
     }
     
-    cout << "========================================\n";
-    cout << "Press Enter to continue...";
-    cin.ignore();
-    cin.get();
+    cout << "=============================================\n";
+    waitForEnter();
 }
 
+// Display help and instructions
 void Game::showHelp() const {
     clearScreen();
     cout << "========================================\n";
@@ -505,11 +541,10 @@ void Game::showHelp() const {
     cout << "Row: 2, Column: 2 - Center position\n";
     cout << "Row: 3, Column: 3 - Bottom-right corner\n";
     cout << "========================================\n";
-    cout << "Press Enter to continue...";
-    cin.ignore();
-    cin.get();
+    waitForEnter();
 }
 
+// Save the leaderboard to a file
 void Game::saveLeaderboard() const {
     ofstream file("leaderboard.txt");
     if (file.is_open()) {
@@ -521,13 +556,20 @@ void Game::saveLeaderboard() const {
     }
 }
 
+// Load the leaderboard from a file
 void Game::loadLeaderboard() {
     ifstream file("leaderboard.txt");
     if (file.is_open()) {
         string name;
         int wins, losses, draws;
         
-        while (file >> name >> wins >> losses >> draws) {
+        while (file >> wins >> losses >> draws) {
+            // Read the rest of the line as the name (allows spaces in names)
+            getline(file, name);
+            // Remove leading space if present
+            if (!name.empty() && name[0] == ' ') {
+                name = name.substr(1);
+            }
             leaderboard[name] = {name, wins, losses, draws};
         }
         

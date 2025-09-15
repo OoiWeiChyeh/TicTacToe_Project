@@ -24,6 +24,9 @@ int main() {
             continue;
         }
         
+        // Clear input buffer to prevent any leftover characters
+        cin.ignore(10000, '\n');
+        
         switch (choice) {
             case 1:
                 game.startNewGame(false); // Player vs Player
