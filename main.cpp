@@ -1,55 +1,48 @@
 #include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
 #include "game.h"
 
 using namespace std;
 
 int main() {
-    char board[BOARD_SIZE][BOARD_SIZE];
-    char currentPlayer = PLAYER_X;
-    bool gameOver = false;
-    int row, col;
+    srand(time(0)); // Seed for random number generation
     
-    // Initialize the board
-    initializeBoard(board);
+    Game game;
+    int choice;
+    bool exitGame = false;
     
-    cout << "Welcome to Tic-Tac-Toe!\n";
-    cout << "Player 1: X, Player 2: O\n";
-    cout << "Enter row and column numbers (0-2) to make your move.\n\n";
-    
-    // Main game loop
-    while (!gameOver) {
-        // Display the current board
-        displayBoard(board);
+    while (!exitGame) {
+        game.showMainMenu();
+        cout << "Enter your choice: ";
+        cin >> choice;
         
-        // Get player input
-        cout << "Player " << currentPlayer << ", enter your move (row column): ";
-        cin >> row >> col;
-        
-        // Validate and make the move
-        if (isValidMove(board, row, col)) {
-            makeMove(board, row, col, currentPlayer);
-            
-            // Check for win
-            if (checkWin(board, currentPlayer)) {
-                displayBoard(board);
-                cout << "Player " << currentPlayer << " wins!\n";
-                gameOver = true;
-            } 
-            // Check for draw
-            else if (checkDraw(board)) {
-                displayBoard(board);
-                cout << "It's a draw!\n";
-                gameOver = true;
-            } 
-            // Continue the game
-            else {
-                switchPlayer(currentPlayer);
-            }
-        } else {
-            cout << "Invalid move. Please try again.\n";
+        switch (choice) {
+            case 1:
+                game.startNewGame(false); // Player vs Player
+                break;
+            case 2:
+                game.startNewGame(true); // Player vs AI
+                break;
+            case 3:
+                game.showLeaderboard();
+                break;
+            case 4:
+                game.showHelp();
+                break;
+            case 5:
+                exitGame = true;
+                cout << "Thanks for playing!\n";
+                break;
+            default:
+                cout << "Invalid choice. Please try again.\n";
+                cin.clear();
+                cin.ignore(10000, '\n');
         }
     }
     
-    cout << "Thanks for playing!\n";
     return 0;
 }
