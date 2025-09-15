@@ -483,37 +483,48 @@ void Game::updateLeaderboard(const string& name, bool won, bool draw) {
     }
 }
 
-// Display the leaderboard
+// Display the leaderboard with proper alignment
 void Game::showLeaderboard() const {
     clearScreen();
-    cout << "=============================================\n";
-    cout << "                  LEADERBOARD                \n";
-    cout << "=============================================\n";
+    cout << "=======================================================\n";
+    cout << "                   LEADERBOARD                         \n";
+    cout << "=======================================================\n";
     
     if (leaderboard.empty()) {
         cout << "No games played yet.\n";
     } else {
-        cout << left << setw(20) << "Player" 
-             << setw(8) << "Wins" 
+        // Find the longest name to set appropriate column width
+        size_t maxNameLength = 10; // Minimum width for "Player" header
+        for (const auto& entry : leaderboard) {
+            if (entry.first.length() > maxNameLength) {
+                maxNameLength = entry.first.length();
+            }
+        }
+        maxNameLength += 2; // Add some padding
+        
+        // Header row
+        cout << left << setw(maxNameLength) << "Player" 
+             << right << setw(8) << "Wins" 
              << setw(8) << "Losses" 
              << setw(8) << "Draws" 
-             << setw(10) << "Win Rate" << endl;
-        cout << "---------------------------------------------\n";
+             << setw(12) << "Win Rate" << endl;
+        cout << string(maxNameLength + 36, '-') << endl;
         
+        // Data rows
         for (const auto& entry : leaderboard) {
             const Player& player = entry.second;
             int totalGames = player.wins + player.losses + player.draws;
             float winRate = (totalGames > 0) ? (player.wins * 100.0f / totalGames) : 0;
             
-            cout << left << setw(20) << player.name 
-                 << setw(8) << player.wins 
+            cout << left << setw(maxNameLength) << player.name 
+                 << right << setw(8) << player.wins 
                  << setw(8) << player.losses 
                  << setw(8) << player.draws 
-                 << setw(10) << fixed << setprecision(1) << winRate << "%" << endl;
+                 << setw(11) << fixed << setprecision(1) << winRate << "%" << endl;
         }
     }
     
-    cout << "=============================================\n";
+    cout << "=======================================================\n";
     waitForEnter();
 }
 
