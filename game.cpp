@@ -211,13 +211,13 @@ void Game::waitForEnter() const {
 void Game::showMainMenu() const {
     clearScreen();
     cout << "========================================\n";
-    cout << "           TIC-TAC-TOE                  \n";
+    cout << "              TIC-TAC-TOE               \n";
     cout << "========================================\n";
-    cout << "1. Player vs Player\n";
-    cout << "2. Player vs AI\n";
-    cout << "3. View Leaderboard\n";
-    cout << "4. Help & Instructions\n";
-    cout << "5. Exit\n";
+    cout << "         1. Player vs Player\n";
+	cout << "         2. Player vs AI\n";
+    cout << "         3. View Leaderboard\n";
+	cout << "         4. Help & Instructions\n";
+    cout << "         5. Exit\n";
     cout << "========================================\n";
 }
 
