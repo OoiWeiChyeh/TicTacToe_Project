@@ -35,27 +35,35 @@ void Game::clearScreen() const {
 
 // Display the game board with visual enhancements
 void Game::displayBoard() const {
-    cout << "\n    1   2   3\n";
-    cout << "  +-----------+\n";
+    cout << "\n        1       2       3\n";
+    cout << "    +-------+-------+-------+\n";
     for (int i = 0; i < BOARD_SIZE; i++) {
-        cout << i+1 << " ¦ ";
+        // Top padding inside each row
+        cout << "    |       |       |       |\n";
+
+        // Middle row with symbols
+        cout << " " << i+1 << "  |";
         for (int j = 0; j < BOARD_SIZE; j++) {
-            // Add color to X and O
-            if (board[i][j] == PLAYER_X) {
-                cout << "\033[1;34m" << board[i][j] << "\033[0m"; // Blue for X
-            } else if (board[i][j] == PLAYER_O) {
-                cout << "\033[1;31m" << board[i][j] << "\033[0m"; // Red for O
+            char cell = board[i][j];
+            if (cell == PLAYER_X) {
+                cout << "   \033[1;34m" << cell << "\033[0m   |";
+            } else if (cell == PLAYER_O) {
+                cout << "   \033[1;31m" << cell << "\033[0m   |";
             } else {
-                cout << board[i][j];
+                cout << "       |";
             }
-            cout << " ¦ ";
         }
         cout << "\n";
+
+        // Bottom padding inside each row
+        cout << "    |       |       |       |\n";
+
+        // Row separator
         if (i < BOARD_SIZE - 1) {
-            cout << "  ¦---+---+---¦\n";
+            cout << "    +-------+-------+-------+\n";
         }
     }
-    cout << "  +-----------+\n\n";
+    cout << "    +-------+-------+-------+\n\n";
 }
 
 // Display current game status
@@ -480,52 +488,57 @@ void Game::updateLeaderboard(const string& name, bool won, bool draw) {
         } else {
             leaderboard[name].losses++;
         }
+        saveLeaderboard(); // ? Save immediately after every update
     }
 }
 
-// Display the leaderboard with proper alignment
-void Game::showLeaderboard() const {
+//Show the leaderboard and allow user to reset it
+void Game::showLeaderboard() {
     clearScreen();
-    cout << "=======================================================\n";
-    cout << "                   LEADERBOARD                         \n";
-    cout << "=======================================================\n";
-    
+    cout << "================ LEADERBOARD ================\n";
+
+    // Show leaderboard table
     if (leaderboard.empty()) {
         cout << "No games played yet.\n";
     } else {
-        // Find the longest name to set appropriate column width
-        size_t maxNameLength = 10; // Minimum width for "Player" header
+        cout << left << setw(12) << "Player"
+             << right << setw(6) << "Wins"
+             << setw(8) << "Losses"
+             << setw(7) << "Draws"
+             << setw(10) << "WinRate" << "\n";
+        cout << "---------------------------------------------\n";
+
         for (const auto& entry : leaderboard) {
-            if (entry.first.length() > maxNameLength) {
-                maxNameLength = entry.first.length();
-            }
-        }
-        maxNameLength += 2; // Add some padding
-        
-        // Header row
-        cout << left << setw(maxNameLength) << "Player" 
-             << right << setw(8) << "Wins" 
-             << setw(8) << "Losses" 
-             << setw(8) << "Draws" 
-             << setw(12) << "Win Rate" << endl;
-        cout << string(maxNameLength + 36, '-') << endl;
-        
-        // Data rows
-        for (const auto& entry : leaderboard) {
-            const Player& player = entry.second;
-            int totalGames = player.wins + player.losses + player.draws;
-            float winRate = (totalGames > 0) ? (player.wins * 100.0f / totalGames) : 0;
-            
-            cout << left << setw(maxNameLength) << player.name 
-                 << right << setw(8) << player.wins 
-                 << setw(8) << player.losses 
-                 << setw(8) << player.draws 
-                 << setw(11) << fixed << setprecision(1) << winRate << "%" << endl;
+            const Player& p = entry.second;
+            int total = p.wins + p.losses + p.draws;
+            float rate = (total > 0) ? (p.wins * 100.0f / total) : 0;
+
+            cout << left << setw(12) << p.name
+                 << right << setw(6) << p.wins
+                 << setw(8) << p.losses
+                 << setw(7) << p.draws
+                 << setw(9) << fixed << setprecision(1) << rate << "%\n";
         }
     }
-    
-    cout << "=======================================================\n";
-    waitForEnter();
+
+    cout << "=============================================\n";
+    cout << "Press 'r' to reset, or Enter to return: ";
+
+    // Read entire line input (so Enter = empty string, 'r' works too)
+    string input;
+    getline(cin, input);
+
+    // If user pressed 'r' (case-insensitive), ask for confirmation
+    if (!input.empty() && tolower(input[0]) == 'r') {
+        cout << "Confirm reset? (y/n): ";
+        char confirm;
+        cin >> confirm;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        if (tolower(confirm) == 'y') {
+            resetLeaderboard();
+            cout << "Reset done!\n";
+            }
+    }
 }
 
 // Display help and instructions
@@ -561,7 +574,7 @@ void Game::saveLeaderboard() const {
     if (file.is_open()) {
         for (const auto& entry : leaderboard) {
             const Player& player = entry.second;
-            file << player.name << " " << player.wins << " " << player.losses << " " << player.draws << "\n";
+            file << player.name << "," << player.wins << "," << player.losses << "," << player.draws << "\n";
         }
         file.close();
     }
@@ -571,19 +584,30 @@ void Game::saveLeaderboard() const {
 void Game::loadLeaderboard() {
     ifstream file("leaderboard.txt");
     if (file.is_open()) {
-        string name;
-        int wins, losses, draws;
-        
-        while (file >> wins >> losses >> draws) {
-            // Read the rest of the line as the name (allows spaces in names)
-            getline(file, name);
-            // Remove leading space if present
-            if (!name.empty() && name[0] == ' ') {
-                name = name.substr(1);
-            }
+        string line;
+        while (getline(file, line)) {
+            if (line.empty()) continue;
+            size_t p1 = line.find(',');
+            size_t p2 = line.find(',', p1 + 1);
+            size_t p3 = line.find(',', p2 + 1);
+
+            string name = line.substr(0, p1);
+            int wins = stoi(line.substr(p1 + 1, p2 - p1 - 1));
+            int losses = stoi(line.substr(p2 + 1, p3 - p2 - 1));
+            int draws = stoi(line.substr(p3 + 1));
+
             leaderboard[name] = {name, wins, losses, draws};
         }
-        
         file.close();
     }
 }
+
+// Reset leaderboard by clearing memory and file
+void Game::resetLeaderboard() {
+    leaderboard.clear(); // Clear in-memory data
+    ofstream file("leaderboard.txt", ios::trunc); // Truncate the file
+    file.close();
+    cout << "Leaderboard has been reset!\n";
+    waitForEnter();
+}
+

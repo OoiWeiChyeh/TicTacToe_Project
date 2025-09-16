@@ -65,6 +65,7 @@ public:
     // Main game flow
     void showMainMenu() const;
     void startNewGame(bool againstAI);
-    void showLeaderboard() const;
+    void showLeaderboard();
+    void resetLeaderboard();
     void showHelp() const;
 };
