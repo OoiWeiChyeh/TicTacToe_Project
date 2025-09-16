@@ -243,6 +243,26 @@ void Game::startNewGame(bool againstAI) {
         if (diffChoice == 1) aiDifficulty = Difficulty::EASY;
         else if (diffChoice == 3) aiDifficulty = Difficulty::HARD;
         else aiDifficulty = Difficulty::MEDIUM;
+         // Ask who goes first
+	    int firstChoice = getValidatedInput("Who goes first? (1-You, 2-AI): ", 1, 2);
+	    if (firstChoice == 2) {
+	        currentPlayer = PLAYER_O; // AI will move first
+	    } else {
+	        currentPlayer = PLAYER_X; // Player starts
+	    }
+	    // If AI goes first, show board once before AI moves
+		if (vsAI && currentPlayer == PLAYER_O) {
+		    clearScreen();
+		    displayBoard();
+		    cout << "AI is thinking...\n";
+		    #ifdef _WIN32
+		        system("timeout 1 >nul"); // 1 second pause on Windows
+		    #else
+		        system("sleep 1");        // 1 second pause on Linux/Mac
+		    #endif
+		    makeAIMove();
+		    switchPlayer(); // After AI moves, switch to player
+		}
     } else {
         if (player2Name.empty() || player2Name == "AI") {
             player2Name = getPlayerName("Enter Player 2 (O) name: ");
